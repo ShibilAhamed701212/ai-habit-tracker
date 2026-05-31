@@ -1,0 +1,29 @@
+info:
+  name: Update Habit
+  type: http
+  seq: 8
+
+http:
+  method: PUT
+  url: http://localhost:8000/api/habits/{{habitId}}
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+      enabled: true
+    - name: Content-Type
+      value: application/json
+      enabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Drink 3L of water",
+        "description": "Updated goal"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

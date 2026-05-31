@@ -1,0 +1,29 @@
+info:
+  name: Habit Chat
+  type: http
+  seq: 23
+
+http:
+  method: POST
+  url: http://localhost:8000/api/ai/chat
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+      enabled: true
+    - name: Content-Type
+      value: application/json
+      enabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "question": "Which day of the week am I most consistent?"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

@@ -1,0 +1,28 @@
+info:
+  name: Mark Complete
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: http://localhost:8000/api/logs
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+      enabled: true
+    - name: Content-Type
+      value: application/json
+      enabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "habitId": "{{habitId}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

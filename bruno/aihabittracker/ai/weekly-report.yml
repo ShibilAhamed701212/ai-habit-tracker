@@ -1,0 +1,23 @@
+info:
+  name: AI Weekly Report
+  type: http
+  seq: 20
+
+http:
+  method: POST
+  url: http://localhost:8000/api/ai/weekly-report
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+      enabled: true
+    - name: Content-Type
+      value: application/json
+      enabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

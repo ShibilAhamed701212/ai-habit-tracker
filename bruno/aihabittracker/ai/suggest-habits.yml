@@ -1,0 +1,31 @@
+info:
+  name: Suggest Habits
+  type: http
+  seq: 21
+
+http:
+  method: POST
+  url: http://localhost:8000/api/ai/suggest-habits
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+      enabled: true
+    - name: Content-Type
+      value: application/json
+      enabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "goals": "Get fitter, read more, and reduce phone time",
+        "productiveTime": "Early morning",
+        "struggles": "I keep losing momentum in the evening"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+

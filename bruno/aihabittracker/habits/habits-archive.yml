@@ -1,0 +1,19 @@
+info:
+  name: Archive Habit
+  type: http
+  seq: 9
+
+http:
+  method: PUT
+  url: http://localhost:8000/api/habits/{{habitId}}/archive
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+      enabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

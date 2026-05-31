@@ -1,0 +1,34 @@
+info:
+  name: Create Habit
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: http://localhost:8000/api/habits
+  headers:
+    - name: Authorization
+      value: Bearer {{token}}
+      enabled: true
+    - name: Content-Type
+      value: application/json
+      enabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Drink 2L of water",
+        "description": "Stay hydrated throughout the day.",
+        "category": "Health",
+        "frequency": "daily",
+        "targetDays": 7,
+        "color": "#0ea5e9",
+        "icon": "💧"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
