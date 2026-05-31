@@ -36,6 +36,9 @@ export default function HabitSuggestionModal({ open, onClose, onAccept }) {
       });
       setSuggestions(res.data.suggestions || []);
       setStep(3);
+    } catch {
+      setSuggestions([]);
+      setStep(3);
     } finally {
       setLoading(false);
     }

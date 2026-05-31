@@ -15,6 +15,7 @@ export default function MorningMotivation() {
     const today = new Date().toISOString().slice(0, 10);
     const seen = localStorage.getItem("morning-seen");
     if (seen === today) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     api
       .get("/ai/morning")

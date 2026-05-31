@@ -29,7 +29,7 @@ const ORBITS = {
   inner: { inset: "36%", duration: 18, planet: 40 },
 };
 
-const STARS = Array.from({ length: 14 }).map((_, i) => ({
+const STARS = Array.from({ length: 14 }).map(() => ({
   top: `${Math.round(Math.random() * 95)}%`,
   left: `${Math.round(Math.random() * 95)}%`,
   size: 2 + Math.round(Math.random() * 3),

@@ -3,6 +3,7 @@ import api from "../api/axios.js";
 
 const AuthContext = createContext(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
@@ -10,14 +11,13 @@ export const AuthProvider = ({ children }) => {
     const raw = localStorage.getItem("user");
     return raw ? JSON.parse(raw) : null;
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(
+    () => !!localStorage.getItem("token"),
+  );
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    if (!token) return;
     api
       .get("/auth/me")
       .then((res) => {

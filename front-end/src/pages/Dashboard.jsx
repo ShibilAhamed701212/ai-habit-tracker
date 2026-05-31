@@ -75,7 +75,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    loadAll();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadAll();
   }, []);
 
   const completedToday = useMemo(
@@ -130,6 +131,7 @@ export default function Dashboard() {
       const s = streaksById[h._id];
       if (!s) continue;
       if (s.longest >= 7 && s.current === 0 && !dismissed[h._id]) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRecoveryHabit(h);
         return;
       }
