@@ -1,4 +1,4 @@
-import Habit from "../models/Habit.js";
+import Habit, { HABIT_CATEGORIES } from "../models/Habit.js";
 import HabitLog from "../models/HabitLog.js";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
@@ -6,9 +6,61 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { calcStreak, lastNDays, todayKey } from "../utils/dateHelpers.js";
 import { isValidObjectId } from "../middleware/validate.js";
 
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_HISTORY_CHARS = 2000;
+
+// Chat history comes from the client: keep only well-formed user/assistant
+// turns so it cannot inject system messages or blow up the prompt size.
+export const sanitizeHistory = (history, question = "") => {
+  if (!Array.isArray(history)) return [];
+  const turns = history
+    .filter(
+      (m) =>
+        m &&
+        (m.role === "user" || m.role === "assistant" || m.role === "model") &&
+        typeof (m.content ?? m.text) === "string",
+    )
+    .map((m) => ({
+      role: m.role === "user" ? "user" : "assistant",
+      content: String(m.content ?? m.text).slice(0, MAX_HISTORY_CHARS),
+    }))
+    .filter((m) => m.content.trim());
+
+  // The current question is sent separately; drop it if the client also
+  // appended it to the history.
+  const last = turns.at(-1);
+  if (last?.role === "user" && last.content.trim() === question.trim()) {
+    turns.pop();
+  }
+  return turns.slice(-MAX_HISTORY_MESSAGES);
+};
+
+const cleanText = (value, max) =>
+  typeof value === "string" ? value.trim().slice(0, max) : "";
+
+// AI output is untrusted: coerce suggestions into values the Habit model
+// accepts so "Add habit" does not fail on an invented category.
+export const normalizeSuggestions = (items) =>
+  (Array.isArray(items) ? items : [])
+    .filter((item) => item && typeof item === "object")
+    .map((item) => {
+      const category = HABIT_CATEGORIES.find(
+        (c) => c.toLowerCase() === cleanText(item.category, 40).toLowerCase(),
+      );
+      return {
+        name: cleanText(item.name, 80),
+        description: cleanText(item.description, 300),
+        frequency: item.frequency === "weekly" ? "weekly" : "daily",
+        category: category || "Other",
+        icon: cleanText(item.icon, 8),
+        reason: cleanText(item.reason, 300),
+      };
+    })
+    .filter((item) => item.name);
+
 const openRouterUrl = `${String(env.aiBaseUrl || "").replace(/\/+$/, "")}/chat/completions`;
 const geminiUrl = env.geminiApiKey
-  ? `https://generativelanguage.googleapis.com/v1beta/${String(env.geminiModel || "models/gemini-2.5-flash").replace(/^\/+/, "")}:generateContent?key=${encodeURIComponent(env.geminiApiKey)}`
+  ? `https://generativelanguage.googleapis.com/v1beta/${String(env.geminiModel || "models/gemini-2.5-flash").replace(/^\/+/, "")}:generateContent`
   : "";
 
 const hasOpenRouterKey = () => Boolean(env.aiApiKey?.trim());
@@ -78,12 +130,14 @@ const callGemini = async (prompt, systemInstruction, history = []) => {
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
+        "x-goog-api-key": env.geminiApiKey,
       },
       body: JSON.stringify(body),
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini request failed with ${response.status}`);
+      console.warn(`Gemini request failed with ${response.status}`);
+      return null;
     }
 
     try {
@@ -93,7 +147,8 @@ const callGemini = async (prompt, systemInstruction, history = []) => {
     } catch {
       return null;
     }
-  } catch {
+  } catch (error) {
+    console.warn("AI provider call failed:", error instanceof Error ? error.message : error);
     return null;
   } finally {
     clearTimeout(timeout);
@@ -108,7 +163,7 @@ const callOpenRouter = async (prompt, systemInstruction, history = []) => {
 
   try {
     const formattedHistory = (history || []).map((m) => ({
-      role: m.role === "model" ? "assistant" : m.role || "user",
+      role: m.role === "user" ? "user" : "assistant",
       content: m.content || m.text || "",
     }));
 
@@ -135,7 +190,8 @@ const callOpenRouter = async (prompt, systemInstruction, history = []) => {
     });
 
     if (!response.ok) {
-      throw new Error(`AI request failed with ${response.status}`);
+      console.warn(`OpenRouter request failed with ${response.status}`);
+      return null;
     }
 
     const contentType = response.headers.get("content-type") || "";
@@ -156,7 +212,8 @@ const callOpenRouter = async (prompt, systemInstruction, history = []) => {
     } catch {
       return null;
     }
-  } catch {
+  } catch (error) {
+    console.warn("AI provider call failed:", error instanceof Error ? error.message : error);
     return null;
   } finally {
     clearTimeout(timeout);
@@ -509,11 +566,10 @@ export const suggestHabits = asyncHandler(async (req, res) => {
   let suggestions = fallback;
   try {
     const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-    if (Array.isArray(parsed)) {
-      suggestions = parsed;
-    } else if (Array.isArray(parsed?.suggestions)) {
-      suggestions = parsed.suggestions;
-    }
+    const candidates = normalizeSuggestions(
+      Array.isArray(parsed) ? parsed : parsed?.suggestions,
+    );
+    if (candidates.length) suggestions = candidates;
   } catch {
     suggestions = fallback;
   }
@@ -552,7 +608,7 @@ export const generateRecoveryPlan = asyncHandler(async (req, res) => {
 
 export const chatWithHabits = asyncHandler(async (req, res) => {
   const { question = "", history = [] } = req.body || {};
-  const normalizedQuestion = String(question ?? "").trim();
+  const normalizedQuestion = String(question ?? "").trim().slice(0, 2000);
 
   if (!normalizedQuestion) {
     throw new AppError("question is required", 400);
@@ -589,7 +645,7 @@ export const chatWithHabits = asyncHandler(async (req, res) => {
     prompt,
     fallback,
     "You are a helpful habit-analysis assistant. Return markdown only.",
-    history,
+    sanitizeHistory(history, normalizedQuestion),
   );
   res.json({ content });
 });

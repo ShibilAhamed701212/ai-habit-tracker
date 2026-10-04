@@ -11,8 +11,8 @@ export const toDateKey = (date) => format(date, "yyyy-MM-dd");
 
 export const todayKey = () => toDateKey(new Date());
 
-export const last90Days = () => {
-  const end = new Date();
+/** @param {Date} [end] */
+export const last90Days = (end = new Date()) => {
   const start = subDays(end, 89);
   return eachDayOfInterval({ start, end }).map(toDateKey);
 };

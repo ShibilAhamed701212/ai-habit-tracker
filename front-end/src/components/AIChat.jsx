@@ -42,7 +42,7 @@ export default function AIChat() {
     try {
       const res = await api.post("/ai/chat", {
         question: q,
-        history: [...history, newUserMessage],
+        history,
       });
       setMessages((m) => [
         ...m,

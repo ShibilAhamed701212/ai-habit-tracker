@@ -11,7 +11,14 @@ const signToken = (userId) =>
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
-  if (!name?.trim() || !email || !password) {
+  if (
+    typeof name !== "string" ||
+    typeof email !== "string" ||
+    typeof password !== "string" ||
+    !name.trim() ||
+    !email ||
+    !password
+  ) {
     throw new AppError("Name, email and password are required", 400);
   }
   if (!isEmail(email)) {
@@ -42,7 +49,12 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
+  if (
+    typeof email !== "string" ||
+    typeof password !== "string" ||
+    !email ||
+    !password
+  ) {
     throw new AppError("Email and password required", 400);
   }
 
@@ -70,7 +82,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
   }
 
   if (name !== undefined) {
-    if (!name?.trim()) {
+    if (typeof name !== "string" || !name.trim()) {
       throw new AppError("Name cannot be empty", 400);
     }
     user.name = name.trim();

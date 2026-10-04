@@ -56,10 +56,13 @@ export const unmarkComplete = asyncHandler(async (req, res) => {
   res.json({ message: "Unmarked" });
 });
 
+// "Today" depends on the user's timezone, so clients may pass their local
+// date (?date=YYYY-MM-DD); otherwise the server's local date is used.
 export const getToday = asyncHandler(async (req, res) => {
+  const day = parseDateKey(req.query.date, "date") ?? todayKey();
   const logs = await HabitLog.find({
     userId: req.user._id,
-    completedDate: todayKey(),
+    completedDate: day,
   });
   res.json(logs);
 });
@@ -90,7 +93,10 @@ export const getRange = asyncHandler(async (req, res) => {
 });
 
 export const getHeatmap = asyncHandler(async (req, res) => {
-  const days = last90Days();
+  const endKey = parseDateKey(req.query.end, "end");
+  const days = last90Days(
+    endKey ? new Date(`${endKey}T00:00:00`) : undefined,
+  );
   const logs = await HabitLog.find({
     userId: req.user._id,
     completedDate: { $gte: days[0], $lte: days[days.length - 1] },
@@ -149,10 +155,11 @@ export const getAllStats = asyncHandler(async (req, res) => {
   });
 
   const days = lastNDays(30);
-  const logs = await HabitLog.find({
-    userId: req.user._id,
-    completedDate: { $gte: days[0], $lte: days[days.length - 1] },
-  });
+  // Streaks need the full history; only the completion count is 30-day scoped.
+  const logs = await HabitLog.find(
+    { userId: req.user._id, habitId: { $in: habits.map((h) => h._id) } },
+    { habitId: 1, completedDate: 1 },
+  ).lean();
 
   const perHabit = habits.map((h) => {
     const hLogs = logs.filter((l) => String(l.habitId) === String(h._id));
@@ -164,7 +171,9 @@ export const getAllStats = asyncHandler(async (req, res) => {
       icon: h.icon,
       color: h.color,
       category: h.category,
-      completions30d: hLogs.length,
+      completions30d: hLogs.filter(
+        (l) => l.completedDate >= days[0] && l.completedDate <= days[days.length - 1],
+      ).length,
       currentStreak: current,
       longestStreak: longest,
     };
