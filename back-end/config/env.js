@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({ override: true });
+dotenv.config();
 
 const REQUIRED = ["MONGO_URI", "JWT_SECRET"];
 

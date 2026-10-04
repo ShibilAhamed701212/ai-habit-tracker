@@ -27,7 +27,7 @@ export const createHabit = asyncHandler(async (req, res) => {
   const { name, description, category, frequency, targetDays, color, icon } =
     req.body;
 
-  if (!name?.trim()) {
+  if (typeof name !== "string" || !name.trim()) {
     throw new AppError("Habit name is required", 400);
   }
 
