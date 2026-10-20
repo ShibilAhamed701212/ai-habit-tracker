@@ -72,7 +72,7 @@ These were captured from this repository running locally with a seeded demo acco
 **Frontend** (`front-end/`)
 - React 19 + Vite 8
 - Tailwind CSS 4 (`@tailwindcss/vite`)
-- React Router 6, Axios
+- React Router 7, Axios
 - Recharts (charts), react-markdown (AI output), Lucide icons, canvas-confetti
 - ESLint 10 (flat config)
 
@@ -97,7 +97,7 @@ Express API (:8000)  /api/auth  /api/habits  /api/logs  /api/ai
 ```
 
 - **Data model.** `User` (bcrypt-hashed password, `morningMotivation` flag), `Habit` (name, category from a fixed list, frequency, colour, icon, order, `isArchived`) and `HabitLog` (one document per habit per day, `completedDate` stored as a `YYYY-MM-DD` string with a unique `{userId, habitId, completedDate}` index). Every query is scoped to the authenticated user.
-- **Dates.** Completion dates are calendar-day strings chosen by the client in the user's local timezone. Endpoints that need "today" accept the client's date (`/logs/today?date=`, `/logs/heatmap?end=`) and fall back to the server's local date.
+- **Dates.** Completion dates are calendar-day strings chosen by the client in the user's local timezone. Endpoints that depend on "today" (`/logs/today`, `/logs/heatmap`, `/logs/stats`, all `/ai/*`) accept the client's date and fall back to the server's local date. Completions dated more than one day ahead of the server are rejected.
 - **AI pipeline.** The controller builds a snapshot of the user's habits and logs (7/30-day completions, streaks, top habit, top category, best weekday), puts a JSON summary into a prompt, and tries Gemini, then the OpenAI-compatible provider (30 s timeout each). Chat history from the client is limited to the last 20 user/assistant turns. Suggested habits are normalised to valid categories and frequencies before they reach the client.
 
 ## 📁 Project structure
@@ -148,7 +148,7 @@ cd ai-habit-tracker
 cd back-end
 cp .env.example .env      # then set MONGO_URI and JWT_SECRET at minimum
 npm install
-npm run dev               # nodemon; use `npm start` for plain node
+npm run dev               # node --watch; use `npm start` for plain node
 ```
 
 The API listens on `http://localhost:8000` (check `GET /api/health`). The server exits on start-up if `MONGO_URI` or `JWT_SECRET` is missing or MongoDB is unreachable within 10 seconds.
@@ -166,7 +166,7 @@ Open `http://localhost:5173`, create an account, add a habit and check it off.
 
 | Script | Where | What it does |
 |---|---|---|
-| `npm run dev` | back-end | Start API with nodemon |
+| `npm run dev` | back-end | Start API with `node --watch` (restarts on file changes) |
 | `npm start` | back-end | Start API with node |
 | `npm test` | back-end | Run the automated test suite |
 | `npm run test:api` | back-end | PowerShell smoke test against a running API (Windows) |
@@ -188,6 +188,7 @@ Values already set in the process environment take precedence over `.env`.
 | `NODE_ENV` | | `development` | `production` hides stack traces and tightens rate limits |
 | `JWT_EXPIRES_IN` | | `30d` | Token lifetime |
 | `CLIENT_URL` | | | Comma-separated extra CORS origins. `localhost`/`127.0.0.1` on any port are always allowed |
+| `TRUST_PROXY` | | unset | Express `trust proxy` value (e.g. `1`) when running behind a reverse proxy, so rate limits see real client IPs |
 | `GEMINI_API_KEY` | | | Enables Gemini (sent in the `x-goog-api-key` header) |
 | `GEMINI_MODEL` | | `models/gemini-2.5-flash` | Gemini model path |
 | `OPENROUTER_API_KEY` | | | Enables the OpenAI-compatible fallback provider (`NVIDIA_API_KEY` is also accepted) |
@@ -202,7 +203,7 @@ Values already set in the process environment take precedence over `.env`.
 
 ## 📡 API reference
 
-All routes are under `/api`. 🔒 routes need `Authorization: Bearer <token>`. Errors are returned as `{ "message": "..." }` with a 4xx/5xx status. Dates are `YYYY-MM-DD`.
+All routes are under `/api`. 🔒 routes need `Authorization: Bearer <token>`. Errors are returned as `{ "message": "..." }` with a 4xx/5xx status. Dates are `YYYY-MM-DD`; every optional `date` is the user's local today.
 
 **Rate limits** (per IP, 15-minute window): `/api/auth/*` 20 requests in production (100 otherwise); `/api/ai/*` 30 in production (200 otherwise).
 
@@ -243,18 +244,18 @@ Categories: `Health, Fitness, Learning, Mindfulness, Productivity, Social, Finan
 | GET | `/api/logs/today?date=` | Completions for `date` (default: server's today) |
 | GET | `/api/logs/range?start=&end=` | Completions between two dates (inclusive) |
 | GET | `/api/logs/heatmap?end=` | 90 `{ date, count }` entries ending at `end` (default: server's today) |
-| GET | `/api/logs/stats` | Per active habit: 30-day completions, current and longest streak (all-time) |
-| GET | `/api/logs/stats/:habitId` | One habit: totals, streaks, completion rate since creation, monthly counts |
+| GET | `/api/logs/stats?date=` | Per active habit: 30-day completions, current and longest streak (all-time), relative to `date` (default: server's today) |
+| GET | `/api/logs/stats/:habitId?date=` | One habit: totals, streaks, completion rate since creation (capped at 100%), monthly counts |
 
 ### AI 🔒
 
 | Method | Endpoint | Body | Response |
 |--------|----------|------|----------|
-| GET | `/api/ai/morning` | | `{ content }` (markdown) |
-| POST | `/api/ai/weekly-report` | | `{ content }` |
-| POST | `/api/ai/suggest-habits` | `{ goals, productiveTime, struggles }` (all required) | `{ suggestions: [{ name, description, frequency, category, icon, reason }] }` |
-| POST | `/api/ai/recovery-plan` | `{ habitId }` | `{ content }` |
-| POST | `/api/ai/chat` | `{ question, history? }` where `history` is `[{ role: "user" \| "assistant", content }]` | `{ content }` |
+| GET | `/api/ai/morning?date=` | | `{ content }` (markdown) |
+| POST | `/api/ai/weekly-report` | `{ date? }` | `{ content }` |
+| POST | `/api/ai/suggest-habits` | `{ goals, productiveTime, struggles, date? }` (first three required) | `{ suggestions: [{ name, description, frequency, category, icon, reason }] }` |
+| POST | `/api/ai/recovery-plan` | `{ habitId, date? }` | `{ content }` |
+| POST | `/api/ai/chat` | `{ question, history?, date? }` where `history` is `[{ role: "user" \| "assistant", content }]` | `{ content }` |
 
 Example (fallback mode, no AI key):
 
@@ -274,7 +275,7 @@ cd back-end
 npm test
 ```
 
-The suite uses `node:test`, supertest and **mongodb-memory-server**, which downloads a MongoDB binary on first run, so no database setup is needed. It covers auth, ownership checks, input validation, the timezone-aware log endpoints, all-time streaks in `/logs/stats`, the AI fallbacks, chat-history sanitising and suggestion normalising (15 tests).
+The suite uses `node:test`, supertest and **mongodb-memory-server**, which downloads a MongoDB binary on first run, so no database setup is needed. It covers auth, ownership checks, input validation, the timezone-aware log endpoints, all-time streaks in `/logs/stats`, the AI fallbacks, chat-history sanitising, suggestion normalising, client-date streaks, future-date rejection and length limits (21 tests).
 
 Frontend checks:
 
@@ -293,7 +294,7 @@ The repository has no Dockerfile or hosting configuration; deploy the two parts 
 1. **API** to any Node host (Render, Railway, a VM...). Run `npm ci && npm start` in `back-end/` with `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL=<your frontend origin>` and an AI key if wanted.
 2. **Frontend** to any static host (Netlify, Vercel, S3...). Build with `VITE_API_URL=https://<api-host>/api npm run build` and serve `front-end/dist`. Configure the host to rewrite unknown paths to `index.html` so client-side routes such as `/dashboard` work on reload.
 
-The API sits behind rate limiting keyed on client IP; behind a reverse proxy, Express's `trust proxy` setting must be configured for those limits to see real client IPs. This is not set in the code today.
+The API rate-limits by client IP. Behind a reverse proxy, set `TRUST_PROXY` (usually `1`) so the limits see real client IPs instead of the proxy's.
 
 ## 🩺 Troubleshooting
 
@@ -309,15 +310,20 @@ The API sits behind rate limiting keyed on client IP; behind a reverse proxy, Ex
 ## ⚠️ Known limitations
 
 - **Drag-to-reorder has no UI.** `PUT /api/habits/reorder` works, and `@dnd-kit` is installed, but no frontend component uses them yet.
-- **Server-side "today".** AI snapshots, streaks and the 30-day windows in `/logs/stats` use the server's clock. If the server and the user are in different timezones, those values can be a day off around midnight.
 - **Weekly habits** store `frequency`/`targetDays`, but streaks and most completion rates are computed day by day for every habit (only the Insights page uses `targetDays`).
 - **Auth token in `localStorage`**, which any XSS on the frontend origin could read. There is no refresh-token or server-side logout.
 - **No account deletion or password reset.**
-- **Mobile layout** truncates long habit names on the dashboard cards.
-- **Dependency advisories** (`npm audit`): React Router 6 has two moderate advisories that are fixed only in v7 (a major upgrade); the backend's remaining advisories are in `nodemon` (dev only). Backend production dependencies report none.
 - The frontend bundle is about 900 kB minified (Vite warns above 500 kB); routes are not code-split.
 
 ## 📝 Changelog
+
+**Second audit pass (October 2026)**
+
+- Statistics, streaks and AI summaries now use the browser's date (`?date=` / `date` in the body) instead of the server clock.
+- Week rates, today's progress and insights no longer count completions of archived habits, which could push rates past 100%.
+- Completions dated after tomorrow are rejected; a habit's completion rate only counts days since it was created.
+- Length limits on habit and user names; optional `TRUST_PROXY` setting; category chip hidden on phone-width habit cards so names stay readable.
+- React Router upgraded to v7 and `nodemon` replaced by `node --watch`: `npm audit` reports 0 advisories in both packages.
 
 **Engineering audit (October 2026)**
 
