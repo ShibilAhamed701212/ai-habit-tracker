@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "node --watch server.js",
     "test:api": "powershell -ExecutionPolicy Bypass -File scripts/run-api-tests.ps1",
     "test": "node --test"
   },
@@ -28,7 +28,6 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.9.1",
     "mongodb-memory-server": "^11.3.0",
-    "nodemon": "^3.1.4",
     "supertest": "^7.3.1"
   }
 }

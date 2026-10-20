@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sun, X } from "lucide-react";
 import api from "../api/axios.js";
+import { todayKey } from "../utils/dateHelpers.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import Markdown from "./Markdown.jsx";
 
@@ -18,7 +19,7 @@ export default function MorningMotivation() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     api
-      .get("/ai/morning")
+      .get("/ai/morning", { params: { date: todayKey() } })
       .then((res) => {
         setContent(res.data.content);
         localStorage.setItem("morning-seen", today);

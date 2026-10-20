@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { MessageCircle, Send, X, Sparkles, RefreshCw } from "lucide-react";
 import api from "../api/axios.js";
+import { todayKey } from "../utils/dateHelpers.js";
 import Markdown from "./Markdown.jsx";
 
 const SAMPLES = [
@@ -42,6 +43,7 @@ export default function AIChat() {
     try {
       const res = await api.post("/ai/chat", {
         question: q,
+        date: todayKey(),
         history,
       });
       setMessages((m) => [

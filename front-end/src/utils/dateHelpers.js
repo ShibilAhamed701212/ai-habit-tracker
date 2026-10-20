@@ -73,3 +73,10 @@ export const streakFromKeys = (keys) => {
   }
   return { current, longest };
 };
+
+// /logs endpoints also return completions of archived habits; drop them so
+// rates and totals match the habits on screen.
+export const onlyActiveHabitLogs = (logs, habits) => {
+  const ids = new Set(habits.map((h) => String(h._id)));
+  return logs.filter((l) => ids.has(String(l.habitId)));
+};

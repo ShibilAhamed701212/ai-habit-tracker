@@ -14,7 +14,13 @@ import StreakRecoveryCard from "../components/StreakRecoveryCard.jsx";
 import ProgressRing from "../components/ProgressRing.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import { celebrate, celebrateBig } from "../utils/confetti.js";
-import { streakFromKeys, todayKey, weekKeys, toKey } from "../utils/dateHelpers.js";
+import {
+  streakFromKeys,
+  todayKey,
+  weekKeys,
+  toKey,
+  onlyActiveHabitLogs,
+} from "../utils/dateHelpers.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Dashboard() {
@@ -49,8 +55,8 @@ export default function Dashboard() {
       ]);
 
       setHabits(habitsRes.data);
-      setTodayLogs(todayRes.data);
-      setWeekLogs(rangeRes.data);
+      setTodayLogs(onlyActiveHabitLogs(todayRes.data, habitsRes.data));
+      setWeekLogs(onlyActiveHabitLogs(rangeRes.data, habitsRes.data));
       setHeatmap(heatRes.data);
 
       const byId = {};
@@ -196,6 +202,9 @@ export default function Dashboard() {
     setTodayLogs((ls) =>
       ls.filter((l) => String(l.habitId) !== String(habit._id))
     );
+    setWeekLogs((ls) =>
+      ls.filter((l) => String(l.habitId) !== String(habit._id))
+    );
     setAllLogsByHabit((prev) => {
       const next = { ...prev };
       delete next[habit._id];
@@ -206,9 +215,11 @@ export default function Dashboard() {
 
   const archiveHabit = async (habit) => {
     const res = await api.put(`/habits/${habit._id}/archive`);
-    if (res.data.isArchived)
+    if (res.data.isArchived) {
       setHabits((hs) => hs.filter((h) => h._id !== habit._id));
-    else setHabits((hs) => hs.map((h) => (h._id === res.data._id ? res.data : h)));
+      setTodayLogs((ls) => ls.filter((l) => String(l.habitId) !== String(habit._id)));
+      setWeekLogs((ls) => ls.filter((l) => String(l.habitId) !== String(habit._id)));
+    } else setHabits((hs) => hs.map((h) => (h._id === res.data._id ? res.data : h)));
   };
 
   const acceptSuggestion = async (s) => {

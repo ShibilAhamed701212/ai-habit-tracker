@@ -4,7 +4,7 @@ import { format, addWeeks, isSameWeek } from "date-fns";
 import api from "../api/axios.js";
 import WeeklyGrid from "../components/WeeklyGrid.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
-import { weekKeysFor } from "../utils/dateHelpers.js";
+import { weekKeysFor, onlyActiveHabitLogs } from "../utils/dateHelpers.js";
 
 export default function Weekly() {
   const [cursor, setCursor] = useState(new Date());
@@ -26,7 +26,7 @@ export default function Weekly() {
           api.get("/logs/range", { params: { start, end } }),
         ]);
         setHabits(habitsRes.data);
-        setLogs(rangeRes.data);
+        setLogs(onlyActiveHabitLogs(rangeRes.data, habitsRes.data));
       } finally {
         setLoading(false);
       }

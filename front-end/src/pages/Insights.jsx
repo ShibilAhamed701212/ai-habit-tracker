@@ -26,7 +26,12 @@ import {
 import api from "../api/axios.js";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import Markdown from "../components/Markdown.jsx";
-import { weekKeysFor, streakFromKeys } from "../utils/dateHelpers.js";
+import {
+  weekKeysFor,
+  streakFromKeys,
+  todayKey,
+  onlyActiveHabitLogs,
+} from "../utils/dateHelpers.js";
 import { useTheme } from "../context/ThemeContext.jsx";
 
 const PIE_COLORS = [
@@ -100,7 +105,7 @@ export default function Insights() {
           api.get("/logs/range", { params: { start, end } }),
         ]);
         setHabits(habitsRes.data);
-        setLogs(logsRes.data);
+        setLogs(onlyActiveHabitLogs(logsRes.data, habitsRes.data));
 
         // try to load cached report for this week
         const cached = localStorage.getItem(REPORT_CACHE_KEY(thisWeek[0].key));
@@ -124,7 +129,7 @@ export default function Insights() {
   const generateReport = async () => {
     setReportLoading(true);
     try {
-      const res = await api.post("/ai/weekly-report");
+      const res = await api.post("/ai/weekly-report", { date: todayKey() });
       setReport(res.data.content);
       const now = new Date();
       setReportGeneratedAt(now);

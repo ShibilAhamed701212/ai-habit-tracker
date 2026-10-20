@@ -36,6 +36,7 @@ export default function HabitForm({ initial, onSubmit, onCancel, submitting }) {
           placeholder="e.g. Drink 2L of water"
           value={form.name}
           onChange={set("name")}
+          maxLength={100}
           autoFocus
           required
         />
@@ -49,6 +50,7 @@ export default function HabitForm({ initial, onSubmit, onCancel, submitting }) {
           placeholder="Why does this habit matter to you?"
           value={form.description}
           onChange={set("description")}
+          maxLength={500}
         />
       </div>
 

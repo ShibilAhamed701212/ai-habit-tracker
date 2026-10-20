@@ -10,6 +10,15 @@ export const validateEnv = () => {
   }
 };
 
+/** @param {string | undefined} value */
+const parseTrustProxy = (value) => {
+  const v = value?.trim();
+  if (!v) return undefined;
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return /^\d+$/.test(v) ? Number(v) : v;
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT) || 8000,
@@ -32,4 +41,5 @@ export const env = {
     .map((s) => s.trim())
     .filter(Boolean),
   isProd: process.env.NODE_ENV === "production",
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
 };

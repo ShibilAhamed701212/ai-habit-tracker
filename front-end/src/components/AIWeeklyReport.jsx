@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Sparkles, ChevronDown, RefreshCw } from "lucide-react";
 import api from "../api/axios.js";
+import { todayKey } from "../utils/dateHelpers.js";
 import Markdown from "./Markdown.jsx";
 
 export default function AIWeeklyReport() {
@@ -12,7 +13,7 @@ export default function AIWeeklyReport() {
   const generate = async () => {
     setLoading(true);
     try {
-      const res = await api.post("/ai/weekly-report");
+      const res = await api.post("/ai/weekly-report", { date: todayKey() });
       setContent(res.data.content);
       setGeneratedAt(new Date());
       setExpanded(true);

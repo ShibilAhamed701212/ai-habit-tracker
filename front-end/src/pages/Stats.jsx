@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, parseISO, subDays } from "date-fns";
 import api from "../api/axios.js";
+import { todayKey } from "../utils/dateHelpers.js";
 import HabitStatsCard from "../components/HabitStatsCard.jsx";
 import WeeklyBarChart from "../components/WeeklyBarChart.jsx";
 import MonthlyBarChart from "../components/MonthlyBarChart.jsx";
@@ -19,7 +20,7 @@ export default function Stats() {
       setLoading(true);
       try {
         const [statsRes, habitsRes] = await Promise.all([
-          api.get("/logs/stats"),
+          api.get("/logs/stats", { params: { date: todayKey() } }),
           api.get("/habits"),
         ]);
         setStats(statsRes.data);

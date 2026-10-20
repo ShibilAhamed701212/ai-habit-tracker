@@ -59,3 +59,9 @@ test("normalizeSuggestions maps unknown categories to Other", () => {
     ],
   );
 });
+
+test("calcStreak measures the current streak from the given day", () => {
+  const keys = ["2030-01-01", "2030-01-02", "2030-01-03"];
+  assert.deepEqual(calcStreak(keys, "2030-01-04"), { current: 3, longest: 3 });
+  assert.deepEqual(calcStreak(keys, "2030-01-05"), { current: 0, longest: 3 });
+});

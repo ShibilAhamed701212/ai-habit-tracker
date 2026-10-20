@@ -69,6 +69,7 @@ export default function Register() {
                 value={form.name}
                 onChange={set("name")}
                 placeholder="Your name"
+                maxLength={100}
                 required
                 autoFocus
               />

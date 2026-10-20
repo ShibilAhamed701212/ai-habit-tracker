@@ -123,6 +123,7 @@ export default function Sidebar() {
               className="input"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              maxLength={100}
             />
           </div>
 
