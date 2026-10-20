@@ -13,13 +13,13 @@ export default function MorningMotivation() {
 
   useEffect(() => {
     if (!user?.morningMotivation) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayKey();
     const seen = localStorage.getItem("morning-seen");
     if (seen === today) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     api
-      .get("/ai/morning", { params: { date: todayKey() } })
+      .get("/ai/morning", { params: { date: today } })
       .then((res) => {
         setContent(res.data.content);
         localStorage.setItem("morning-seen", today);

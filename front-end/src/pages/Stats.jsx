@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format, parseISO, subDays } from "date-fns";
 import api from "../api/axios.js";
-import { todayKey } from "../utils/dateHelpers.js";
+import { todayKey, onlyActiveHabitLogs } from "../utils/dateHelpers.js";
 import HabitStatsCard from "../components/HabitStatsCard.jsx";
 import WeeklyBarChart from "../components/WeeklyBarChart.jsx";
 import MonthlyBarChart from "../components/MonthlyBarChart.jsx";
@@ -33,7 +33,7 @@ export default function Stats() {
             end: format(end, "yyyy-MM-dd"),
           },
         });
-        setLogs(rangeRes.data);
+        setLogs(onlyActiveHabitLogs(rangeRes.data, habitsRes.data));
       } finally {
         setLoading(false);
       }

@@ -65,3 +65,14 @@ test("calcStreak measures the current streak from the given day", () => {
   assert.deepEqual(calcStreak(keys, "2030-01-04"), { current: 3, longest: 3 });
   assert.deepEqual(calcStreak(keys, "2030-01-05"), { current: 0, longest: 3 });
 });
+
+test("TRUST_PROXY=true is refused at start-up", async () => {
+  const { spawnSync } = await import("node:child_process");
+  const run = spawnSync(process.execPath, ["-e", 'import("./config/env.js")'], {
+    cwd: new URL("..", import.meta.url),
+    env: { ...process.env, TRUST_PROXY: "true" },
+    encoding: "utf8",
+  });
+  assert.notEqual(run.status, 0);
+  assert.match(run.stderr, /TRUST_PROXY=true is unsafe/);
+});

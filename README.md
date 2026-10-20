@@ -188,7 +188,7 @@ Values already set in the process environment take precedence over `.env`.
 | `NODE_ENV` | | `development` | `production` hides stack traces and tightens rate limits |
 | `JWT_EXPIRES_IN` | | `30d` | Token lifetime |
 | `CLIENT_URL` | | | Comma-separated extra CORS origins. `localhost`/`127.0.0.1` on any port are always allowed |
-| `TRUST_PROXY` | | unset | Express `trust proxy` value (e.g. `1`) when running behind a reverse proxy, so rate limits see real client IPs |
+| `TRUST_PROXY` | | unset | Number of reverse-proxy hops (e.g. `1`) or proxy addresses, so rate limits see real client IPs. `true` is refused because it would let clients spoof their IP |
 | `GEMINI_API_KEY` | | | Enables Gemini (sent in the `x-goog-api-key` header) |
 | `GEMINI_MODEL` | | `models/gemini-2.5-flash` | Gemini model path |
 | `OPENROUTER_API_KEY` | | | Enables the OpenAI-compatible fallback provider (`NVIDIA_API_KEY` is also accepted) |
@@ -275,7 +275,7 @@ cd back-end
 npm test
 ```
 
-The suite uses `node:test`, supertest and **mongodb-memory-server**, which downloads a MongoDB binary on first run, so no database setup is needed. It covers auth, ownership checks, input validation, the timezone-aware log endpoints, all-time streaks in `/logs/stats`, the AI fallbacks, chat-history sanitising, suggestion normalising, client-date streaks, future-date rejection and length limits (21 tests).
+The suite uses `node:test`, supertest and **mongodb-memory-server**, which downloads a MongoDB binary on first run, so no database setup is needed. It covers auth, ownership checks, input validation, the timezone-aware log endpoints, all-time streaks in `/logs/stats`, the AI fallbacks, chat-history sanitising, suggestion normalising, client-date streaks, future-date rejection and length limits (24 tests).
 
 Frontend checks:
 

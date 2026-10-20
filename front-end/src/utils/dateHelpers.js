@@ -78,5 +78,11 @@ export const streakFromKeys = (keys) => {
 // rates and totals match the habits on screen.
 export const onlyActiveHabitLogs = (logs, habits) => {
   const ids = new Set(habits.map((h) => String(h._id)));
-  return logs.filter((l) => ids.has(String(l.habitId)));
+  const seen = new Set();
+  return logs.filter((l) => {
+    const k = `${l.habitId}|${l.completedDate}`;
+    if (!ids.has(String(l.habitId)) || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 };

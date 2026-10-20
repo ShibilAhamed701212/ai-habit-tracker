@@ -187,7 +187,7 @@ test("/logs/stats measures current streaks against the client's date", async () 
 test("single-habit completion rate ignores days before the habit existed", async () => {
   const habit = await auth(request(app).post("/api/habits")).send({ name: "Floss" });
   await HabitLog.insertMany(
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => ({
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => ({
       userId: currentUserId(),
       habitId: habit.body._id,
       completedDate: key(subDays(new Date(), i)),
@@ -195,8 +195,9 @@ test("single-habit completion rate ignores days before the habit existed", async
   );
   const res = await auth(request(app).get(`/api/logs/stats/${habit.body._id}`));
   assert.equal(res.status, 200);
-  assert.ok(res.body.completionRate <= 100, `rate was ${res.body.completionRate}`);
-  assert.equal(res.body.totalCompletions, 10);
+  // All nine completions predate the habit (created today), so none count.
+  assert.equal(res.body.completionRate, 0);
+  assert.equal(res.body.totalCompletions, 9);
 });
 
 test("overlong habit names are a 400", async () => {
@@ -210,4 +211,21 @@ test("AI endpoints validate the client date", async () => {
   const ok = await auth(request(app).post("/api/ai/weekly-report")).send({ date: "2030-01-03" });
   assert.equal(ok.status, 200);
   assert.match(ok.body.content, /weekly recap/);
+});
+
+test("impossible calendar dates are a 400", async () => {
+  const res = await auth(request(app).get("/api/logs/stats")).query({ date: "2030-02-31" });
+  assert.equal(res.status, 400);
+});
+
+test("AI weekly report ignores archived habits' completions", async () => {
+  const keep = await auth(request(app).post("/api/habits")).send({ name: "Keep" });
+  const old = await auth(request(app).post("/api/habits")).send({ name: "Old" });
+  const today = key(new Date());
+  await HabitLog.insertMany(
+    [keep, old].map((h) => ({ userId: currentUserId(), habitId: h.body._id, completedDate: today })),
+  );
+  await auth(request(app).put(`/api/habits/${old.body._id}/archive`));
+  const res = await auth(request(app).post("/api/ai/weekly-report")).send({ date: today });
+  assert.match(res.body.content, /\*\*1\*\* completions across \*\*1\*\* active habits/);
 });

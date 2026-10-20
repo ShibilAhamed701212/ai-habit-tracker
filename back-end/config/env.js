@@ -14,7 +14,11 @@ export const validateEnv = () => {
 const parseTrustProxy = (value) => {
   const v = value?.trim();
   if (!v) return undefined;
-  if (v === "true") return true;
+  // "true" would trust any X-Forwarded-For a client sends, letting it dodge
+  // the rate limits, so only a hop count or explicit addresses are accepted.
+  if (v === "true") {
+    throw new Error("TRUST_PROXY=true is unsafe; set the number of proxy hops (e.g. 1) or their addresses");
+  }
   if (v === "false") return false;
   return /^\d+$/.test(v) ? Number(v) : v;
 };

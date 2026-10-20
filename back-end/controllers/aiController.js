@@ -311,12 +311,15 @@ const fallbackSuggestions = ({ goals = "", productiveTime = "", struggles = "" }
 const userToday = (value) => parseDateKey(value, "date") ?? todayKey();
 
 const buildSnapshot = async (userId, today = todayKey()) => {
-  const [habits, logs] = await Promise.all([
+  const [habits, allLogs] = await Promise.all([
     Habit.find({ userId }).sort({ order: 1, createdAt: 1 }).lean(),
     HabitLog.find({ userId }).sort({ completedDate: 1 }).lean(),
   ]);
 
   const activeHabits = habits.filter((habit) => !habit.isArchived);
+  // Archived habits are out of the denominators below, so drop their logs too.
+  const activeIds = new Set(activeHabits.map((habit) => String(habit._id)));
+  const logs = allLogs.filter((log) => activeIds.has(String(log.habitId)));
   const last7 = lastNDays(7, today);
   const last14 = lastNDays(14, today);
   const last30 = lastNDays(30, today);

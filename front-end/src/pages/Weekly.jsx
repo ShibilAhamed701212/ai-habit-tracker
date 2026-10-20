@@ -16,6 +16,8 @@ export default function Weekly() {
   const isCurrentWeek = isSameWeek(cursor, new Date(), { weekStartsOn: 1 });
 
   useEffect(() => {
+    // Ignore responses for a week the user has already navigated away from.
+    let stale = false;
     (async () => {
       setLoading(true);
       try {
@@ -25,12 +27,16 @@ export default function Weekly() {
           api.get("/habits"),
           api.get("/logs/range", { params: { start, end } }),
         ]);
+        if (stale) return;
         setHabits(habitsRes.data);
         setLogs(onlyActiveHabitLogs(rangeRes.data, habitsRes.data));
       } finally {
-        setLoading(false);
+        if (!stale) setLoading(false);
       }
     })();
+    return () => {
+      stale = true;
+    };
   }, [days]);
 
   const logsByHabit = useMemo(() => {
