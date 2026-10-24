@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sparkles, Check, RefreshCw } from "lucide-react";
 import Modal from "./Modal.jsx";
 import api from "../api/axios.js";
+import { todayKey } from "../utils/dateHelpers.js";
 
 export default function HabitSuggestionModal({ open, onClose, onAccept }) {
   const [step, setStep] = useState(0);
@@ -33,6 +34,7 @@ export default function HabitSuggestionModal({ open, onClose, onAccept }) {
         goals,
         productiveTime,
         struggles,
+        date: todayKey(),
       });
       setSuggestions(res.data.suggestions || []);
       setStep(3);

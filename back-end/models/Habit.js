@@ -20,8 +20,8 @@ const habitSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    name: { type: String, required: true, trim: true },
-    description: { type: String, default: "", trim: true },
+    name: { type: String, required: true, trim: true, maxlength: 100 },
+    description: { type: String, default: "", trim: true, maxlength: 500 },
     category: {
       type: String,
       enum: CATEGORIES,

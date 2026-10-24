@@ -11,6 +11,9 @@ export const toDateKey = (date) => format(date, "yyyy-MM-dd");
 
 export const todayKey = () => toDateKey(new Date());
 
+/** Local midnight of a YYYY-MM-DD key. @param {string} key */
+export const keyToDate = (key) => new Date(`${key}T00:00:00`);
+
 /** @param {Date} [end] */
 export const last90Days = (end = new Date()) => {
   const start = subDays(end, 89);
@@ -24,23 +27,25 @@ export const currentWeekKeys = () => {
   return eachDayOfInterval({ start, end }).map(toDateKey);
 };
 
-/** @param {number} n */
-export const lastNDays = (n) => {
-  const end = new Date();
+/** @param {number} n @param {string} [endKey] defaults to today */
+export const lastNDays = (n, endKey) => {
+  const end = endKey ? keyToDate(endKey) : new Date();
   const start = subDays(end, n - 1);
   return eachDayOfInterval({ start, end }).map(toDateKey);
 };
 
-/** @param {string[]} sortedDateKeys */
-export const calcStreak = (sortedDateKeys) => {
+/**
+ * @param {string[]} sortedDateKeys
+ * @param {string} [today] the user's current day (YYYY-MM-DD); defaults to the server's
+ */
+export const calcStreak = (sortedDateKeys, today = todayKey()) => {
   if (!sortedDateKeys.length) return { current: 0, longest: 0 };
 
   const set = new Set(sortedDateKeys);
-  const today = todayKey();
-  const yesterday = toDateKey(subDays(new Date(), 1));
+  const yesterday = toDateKey(subDays(keyToDate(today), 1));
 
   let current = 0;
-  let cursor = new Date();
+  let cursor = keyToDate(today);
 
   if (!set.has(today) && !set.has(yesterday)) {
     current = 0;

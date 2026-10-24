@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Heart, RefreshCw, X } from "lucide-react";
 import api from "../api/axios.js";
+import { todayKey } from "../utils/dateHelpers.js";
 import Markdown from "./Markdown.jsx";
 
 export default function StreakRecoveryCard({ habit, onDismiss }) {
@@ -10,7 +11,10 @@ export default function StreakRecoveryCard({ habit, onDismiss }) {
   const generate = async () => {
     setLoading(true);
     try {
-      const res = await api.post("/ai/recovery-plan", { habitId: habit._id });
+      const res = await api.post("/ai/recovery-plan", {
+        habitId: habit._id,
+        date: todayKey(),
+      });
       setContent(res.data.content);
     } finally {
       setLoading(false);

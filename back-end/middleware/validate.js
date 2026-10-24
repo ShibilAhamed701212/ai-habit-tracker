@@ -21,7 +21,8 @@ export const parseDateKey = (value, fieldName = "date") => {
     throw new AppError(`${fieldName} must be YYYY-MM-DD`, 400);
   }
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime())) {
+  // Reject impossible days such as 2030-02-31, which Date would roll over.
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
     throw new AppError(`Invalid ${fieldName}`, 400);
   }
   return value;

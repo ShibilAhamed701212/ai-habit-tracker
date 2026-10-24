@@ -12,6 +12,9 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 const app = express();
 
 app.disable("x-powered-by");
+// Behind a reverse proxy the rate limiters need the real client IP; set
+// TRUST_PROXY to the number of proxies (e.g. 1) or another Express value.
+if (env.trustProxy !== undefined) app.set("trust proxy", env.trustProxy);
 app.use(securityMiddleware);
 
 const allowedOrigins = env.clientUrls;

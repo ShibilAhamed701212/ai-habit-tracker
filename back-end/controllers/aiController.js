@@ -4,7 +4,7 @@ import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { calcStreak, lastNDays, todayKey } from "../utils/dateHelpers.js";
-import { isValidObjectId } from "../middleware/validate.js";
+import { isValidObjectId, parseDateKey } from "../middleware/validate.js";
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_HISTORY_CHARS = 2000;
@@ -306,17 +306,24 @@ const fallbackSuggestions = ({ goals = "", productiveTime = "", struggles = "" }
   return uniqueByName(picks).slice(0, 3);
 };
 
-const buildSnapshot = async (userId) => {
-  const [habits, logs] = await Promise.all([
+// AI summaries are about the user's "today", which the client sends because
+// it may differ from the server's date.
+const userToday = (value) => parseDateKey(value, "date") ?? todayKey();
+
+const buildSnapshot = async (userId, today = todayKey()) => {
+  const [habits, allLogs] = await Promise.all([
     Habit.find({ userId }).sort({ order: 1, createdAt: 1 }).lean(),
     HabitLog.find({ userId }).sort({ completedDate: 1 }).lean(),
   ]);
 
   const activeHabits = habits.filter((habit) => !habit.isArchived);
-  const last7 = lastNDays(7);
-  const last14 = lastNDays(14);
-  const last30 = lastNDays(30);
-  const last90 = lastNDays(90);
+  // Archived habits are out of the denominators below, so drop their logs too.
+  const activeIds = new Set(activeHabits.map((habit) => String(habit._id)));
+  const logs = allLogs.filter((log) => activeIds.has(String(log.habitId)));
+  const last7 = lastNDays(7, today);
+  const last14 = lastNDays(14, today);
+  const last30 = lastNDays(30, today);
+  const last90 = lastNDays(90, today);
 
   const last7Logs = logs.filter((log) => last7.includes(log.completedDate));
   const last14Logs = logs.filter((log) => last14.includes(log.completedDate));
@@ -333,7 +340,10 @@ const buildSnapshot = async (userId) => {
     const habitLogs30 = last30Logs.filter(
       (log) => String(log.habitId) === String(habit._id),
     );
-    const streak = calcStreak(habitLogs.map((log) => log.completedDate));
+    const streak = calcStreak(
+      habitLogs.map((log) => log.completedDate),
+      today,
+    );
     return {
       habit,
       completions7d: habitLogs7.length,
@@ -388,7 +398,7 @@ const buildSnapshot = async (userId) => {
     topHabit,
     topCategory,
     mostActiveDay,
-    completedToday: logs.filter((log) => log.completedDate === todayKey()),
+    completedToday: logs.filter((log) => log.completedDate === today),
   };
 };
 
@@ -476,7 +486,7 @@ const buildChatFallback = (question, snapshot) => {
 };
 
 export const getMorningMotivation = asyncHandler(async (req, res) => {
-  const snapshot = await buildSnapshot(req.user._id);
+  const snapshot = await buildSnapshot(req.user._id, userToday(req.query.date));
   const fallback = buildMorningFallback(req.user, snapshot);
   const prompt = `Write a short, warm morning motivation message in markdown for ${req.user.name}. Use the user's habit data below. Keep it under 120 words and include one specific win and one small focus for today.\n\n${JSON.stringify(
     {
@@ -499,7 +509,7 @@ export const getMorningMotivation = asyncHandler(async (req, res) => {
 });
 
 export const generateWeeklyReport = asyncHandler(async (req, res) => {
-  const snapshot = await buildSnapshot(req.user._id);
+  const snapshot = await buildSnapshot(req.user._id, userToday(req.body?.date));
   const fallback = buildWeeklyFallback(snapshot);
   const prompt = `Create a concise weekly habit report in markdown for the user below. Use headings and bullets. Include: what went well, what slipped, a pattern to watch, and 2 actionable next steps. Keep it practical and encouraging.\n\nUser: ${req.user.name}\n\nData summary:\n${JSON.stringify(
     {
@@ -546,7 +556,7 @@ export const suggestHabits = asyncHandler(async (req, res) => {
     throw new AppError("goals, productiveTime and struggles are required", 400);
   }
 
-  const snapshot = await buildSnapshot(req.user._id);
+  const snapshot = await buildSnapshot(req.user._id, userToday(req.body?.date));
   const fallback = fallbackSuggestions({
     goals: normalizedGoals,
     productiveTime: normalizedProductiveTime,
@@ -590,7 +600,7 @@ export const generateRecoveryPlan = asyncHandler(async (req, res) => {
     throw new AppError("Habit not found", 404);
   }
 
-  const snapshot = await buildSnapshot(req.user._id);
+  const snapshot = await buildSnapshot(req.user._id, userToday(req.body?.date));
   const fallback = buildRecoveryFallback(habit, snapshot);
   const habitSummary = snapshot.habitSummaries.find(
     (item) => String(item.habit._id) === String(normalizedHabitId),
@@ -614,7 +624,7 @@ export const chatWithHabits = asyncHandler(async (req, res) => {
     throw new AppError("question is required", 400);
   }
 
-  const snapshot = await buildSnapshot(req.user._id);
+  const snapshot = await buildSnapshot(req.user._id, userToday(req.body?.date));
   const fallback = buildChatFallback(normalizedQuestion, snapshot);
   const prompt = `Answer the user's question using their habit data. Keep the response conversational, markdown-friendly, and grounded in the data. If the question asks for a recommendation, include one clear suggestion.\n\nUser question: ${normalizedQuestion}\n\nData summary:\n${JSON.stringify(
     {

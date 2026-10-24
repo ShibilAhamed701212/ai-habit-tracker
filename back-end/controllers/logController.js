@@ -9,10 +9,16 @@ import {
 } from "../middleware/validate.js";
 import {
   todayKey,
+  toDateKey,
   lastNDays,
   last90Days,
   calcStreak,
 } from "../utils/dateHelpers.js";
+import { addDays } from "date-fns";
+
+// The latest calendar day any timezone can be in right now (UTC+14 is at most
+// one day ahead of the server), so completions further out are rejected.
+const latestAllowedKey = () => toDateKey(addDays(new Date(), 1));
 
 /** @param {string} habitId @param {import("mongoose").Types.ObjectId} userId */
 const findOwnedHabit = async (habitId, userId) => {
@@ -29,6 +35,9 @@ const findOwnedHabit = async (habitId, userId) => {
 export const markComplete = asyncHandler(async (req, res) => {
   const { habitId, date } = req.body;
   const completedDate = parseDateKey(date, "date") ?? todayKey();
+  if (completedDate > latestAllowedKey()) {
+    throw new AppError("Cannot complete a habit for a future date", 400);
+  }
 
   await findOwnedHabit(habitId, req.user._id);
 
@@ -118,18 +127,21 @@ export const getHabitStats = asyncHandler(async (req, res) => {
     habitId: habit._id,
   }).sort({ completedDate: -1 });
 
+  const today = parseDateKey(req.query.date, "date") ?? todayKey();
   const dateKeys = logs.map((l) => l.completedDate);
-  const { current, longest } = calcStreak(dateKeys);
+  const { current, longest } = calcStreak(dateKeys, today);
 
   const createdKey = habit.createdAt.toISOString().slice(0, 10);
-  const today = todayKey();
   const start = new Date(`${createdKey}T00:00:00.000Z`);
   const end = new Date(`${today}T00:00:00.000Z`);
   const totalDays = Math.max(
     1,
     Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
   );
-  const completionRate = Math.round((logs.length / totalDays) * 100);
+  // Only days since the habit existed count towards its rate, so back-dated
+  // completions cannot push it past 100%.
+  const inWindow = dateKeys.filter((k) => k >= createdKey && k <= today).length;
+  const completionRate = Math.min(100, Math.round((inWindow / totalDays) * 100));
 
   /** @type {Record<string, number>} */
   const monthly = {};
@@ -154,7 +166,8 @@ export const getAllStats = asyncHandler(async (req, res) => {
     isArchived: false,
   });
 
-  const days = lastNDays(30);
+  const today = parseDateKey(req.query.date, "date") ?? todayKey();
+  const days = lastNDays(30, today);
   // Streaks need the full history; only the completion count is 30-day scoped.
   const logs = await HabitLog.find(
     { userId: req.user._id, habitId: { $in: habits.map((h) => h._id) } },
@@ -164,7 +177,7 @@ export const getAllStats = asyncHandler(async (req, res) => {
   const perHabit = habits.map((h) => {
     const hLogs = logs.filter((l) => String(l.habitId) === String(h._id));
     const keys = hLogs.map((l) => l.completedDate).sort().reverse();
-    const { current, longest } = calcStreak(keys);
+    const { current, longest } = calcStreak(keys, today);
     return {
       habitId: h._id,
       name: h.name,

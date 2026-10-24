@@ -40,7 +40,7 @@ export default function TodayHabitCard({
 
   return (
     <div
-      className={`card p-4 flex items-center gap-4 transition ${completed
+      className={`card p-3 sm:p-4 flex items-center gap-3 sm:gap-4 transition ${completed
         ? "ring-1 ring-brand-500/10 bg-brand-500/5 dark:bg-brand-500/3"
         : ""
         }`}
@@ -55,7 +55,8 @@ export default function TodayHabitCard({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <div className="font-medium truncate">{habit.name}</div>
-          <span className="chip">{habit.category}</span>
+          {/* The category chip would squeeze the name to a few letters on phones. */}
+          <span className="chip hidden sm:inline-flex">{habit.category}</span>
         </div>
         {habit.description && (
           <div className="text-sm text-muted truncate mt-0.5">

@@ -10,6 +10,19 @@ export const validateEnv = () => {
   }
 };
 
+/** @param {string | undefined} value */
+const parseTrustProxy = (value) => {
+  const v = value?.trim();
+  if (!v) return undefined;
+  // "true" would trust any X-Forwarded-For a client sends, letting it dodge
+  // the rate limits, so only a hop count or explicit addresses are accepted.
+  if (v === "true") {
+    throw new Error("TRUST_PROXY=true is unsafe; set the number of proxy hops (e.g. 1) or their addresses");
+  }
+  if (v === "false") return false;
+  return /^\d+$/.test(v) ? Number(v) : v;
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT) || 8000,
@@ -32,4 +45,5 @@ export const env = {
     .map((s) => s.trim())
     .filter(Boolean),
   isProd: process.env.NODE_ENV === "production",
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
 };
